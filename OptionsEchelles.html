@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mezzanine Camille</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans p-0 sm:p-4 md:p-8 m-0">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        const App = () => {
+            const [activeElement, setActiveElement] = useState(null);
+            const [stairType, setStairType] = useState('japonais'); // 'classique', 'japonais', 'bateau'
+            const [viewMode, setViewMode] = useState('top'); // 'top' ou 'coupe'
+            const [mezzDepth, setMezzDepth] = useState(200); // Profondeur (160, 180, 200)
+            const [echappee, setEchappee] = useState(200); // NOUVEAU : Echappée (180, 190, 200)
+
+            // --- Dimensions de la pièce ---
+            const L_X = 415; // Longueur de la pièce
+            const L_Y = 428; // Profondeur totale
+            const Y_chem = 58; // Cheminée
+            const Y_porte = 70; // Porte
+            const Y_faitiere = 73; // Axe faîtière
+
+            // --- DONNÉES DYNAMIQUES CAISSON (Poutres 100x300) ---
+            const Z_bottom = 235;
+            const H_solivette = 11; 
+            const H_poutre = 30; 
+            const H_osb = 2; 
+            
+            const H_plancher = Z_bottom + H_solivette + H_osb; 
+            const Z_top_poutre = Z_bottom + H_poutre;
+
+            // --- CALCULS ESCALIER ET TRÉMIE DYNAMIQUE ---
+            const stairW = stairType === 'classique' ? 65 : (stairType === 'japonais' ? 60 : 52); 
+            const stairL = stairType === 'classique' ? 206 : (stairType === 'japonais' ? 142 : 144); 
+            
+            // Calcul mathématique exact de la trémie basé sur l'échappée cible
+            const flightRun = stairL - stairW;
+            const flightH = (stairType === 'classique' || stairType === 'japonais') ? H_plancher * (9/12) : H_plancher;
+            let rawTremieL = stairL - ((Z_bottom - echappee) * flightRun / flightH);
+            rawTremieL += 6; // Marge de sécurité historique pour l'aisance de passage
+            const tremieL = Math.min(stairL, Math.max(stairW, Math.round(rawTremieL)));
+
+            const stairX_start = Y_chem; 
+            const stairX_end = Y_chem + stairL; 
+            const tremieX_end = stairX_start + tremieL; 
+
+            // Gestion du palier (Atterrissage structurel)
+            const palierW = stairType === 'bateau' ? stairW : 0;
+            const tremieX_start = stairX_start + palierW;
+            const tremieHoleL = tremieL - palierW;
+
+            // --- Mezzanine ---
+            const p_w = 10.0; 
+            const s_w = 7.3; 
+            
+            const Y_poutreArriere = -p_w; 
+            const Y_poutreAvant = mezzDepth - p_w; 
+
+            // --- CALCUL DE COLLISION TOITURE ---
+            const penteToit = (443 - 85) / (428 - 73); 
+            const yCollisionToit = 73 + (443 - H_plancher) / penteToit; 
+
+            // ==========================================
+            // RENDU 1 : VUE DE DESSUS (PLAN ZOOMÉ)
+            // ==========================================
+            const renderTopView = () => {
+                const isBedHorizontal = mezzDepth < 200;
+                const bedW = isBedHorizontal ? 200 : 160;
+                const bedH = isBedHorizontal ? 160 : 200;
+                const bedX = L_X - bedW - 10;
+                const bedY = Math.max(0, mezzDepth - bedH - p_w); 
+                const isBedOverlapping = bedX < tremieX_end;
+                
+                const cutY = yCollisionToit + 30;
+
+                return (
+                <svg viewBox={`-40 -60 500 ${cutY + 50}`} className="w-full h-full drop-shadow-sm">
+                <defs>
+                    <pattern id="netPattern" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                        <line x1="0" y1="0" x2="0" y2="12" stroke="#64748b" strokeWidth="0.8" opacity="0.6" />
+                        <line x1="0" y1="0" x2="12" y2="0" stroke="#64748b" strokeWidth="0.8" opacity="0.6" />
+                    </pattern>
+                </defs>
+
+                {/* Murs Latéraux (Coupés) */}
+                <rect x="-10" y="0" width="10" height={cutY} fill="#cbd5e1" stroke="#94a3b8" />
+                <rect x={L_X} y="0" width="10" height={cutY} fill="#cbd5e1" stroke="#94a3b8" />
+                <rect x="-10" y="-10" width={L_X+20} height="10" fill="#cbd5e1" stroke="#94a3b8" />
+
+                {/* Ligne de coupe virtuelle */}
+                <path d={`M -15 ${cutY} Q ${L_X/4} ${cutY+10} ${L_X/2} ${cutY} T ${L_X+15} ${cutY}`} fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="6,4" />
+                <text x={L_X/2} y={cutY + 20} textAnchor="middle" fill="#94a3b8" fontSize="10" fontStyle="italic">Pièce coupée ici pour agrandir le plan (Totale : 428 cm)</text>
+
+                {/* Fenêtre */}
+                <g onMouseEnter={() => setActiveElement('caisson')} onMouseLeave={() => setActiveElement(null)}>
+                    <rect x={L_X - 4} y="0" width="12" height="150" fill="#bfdbfe" stroke="#3b82f6" strokeWidth="2" className="transition-all duration-500" />
+                    <text x={L_X - 15} y="75" textAnchor="middle" fill="#2563eb" fontSize="10" fontWeight="bold" transform={`rotate(-90, ${L_X - 15}, 75)`}>FENÊTRE</text>
+                </g>
+
+                {/* FILET DE PÊCHEUR */}
+                <g onMouseEnter={() => setActiveElement('filet')} onMouseLeave={() => setActiveElement(null)} className="transition-all duration-500 cursor-pointer">
+                    <rect x="0" y={mezzDepth} width={L_X} height={yCollisionToit - mezzDepth} fill="url(#netPattern)" opacity={activeElement === 'filet' ? 1 : 0.7} />
+                    <rect x="0" y={mezzDepth} width={L_X} height={yCollisionToit - mezzDepth} fill="none" stroke="#64748b" strokeWidth="3" strokeDasharray="6,6" />
+                    <text x={L_X/2} y={mezzDepth + (yCollisionToit - mezzDepth)/2} textAnchor="middle" fill="#334155" fontSize="12" fontWeight="bold" opacity="0.9">FILET D'HABITATION</text>
+                </g>
+
+                {/* Ligne de Collision Toit */}
+                <g onMouseEnter={() => setActiveElement('collision')} onMouseLeave={() => setActiveElement(null)}>
+                    <line x1="0" y1={yCollisionToit} x2={L_X} y2={yCollisionToit} stroke="#ef4444" strokeWidth="2" strokeDasharray="8,4" />
+                    <text x={L_X/2} y={yCollisionToit + 12} textAnchor="middle" fill="#ef4444" fontSize="10" fontWeight="bold">JONCTION MUR/TOIT (~{Math.round(yCollisionToit)} cm)</text>
+                </g>
+
+                {/* Cheminée */}
+                <rect x="0" y="0" width={Y_chem} height={Y_chem} fill="#94a3b8" stroke="#64748b" />
+                <text x={Y_chem/2} y={Y_chem/2+4} textAnchor="middle" fill="#fff" fontSize="10" fontWeight="bold">CH.</text>
+
+                {/* Porte */}
+                <rect x="-6" y={Y_chem} width="6" height={Y_porte} fill="#cbd5e1" />
+                <path d={`M 0 ${Y_chem} A ${Y_porte} ${Y_porte} 0 0 0 -${Y_porte} ${Y_chem + Y_porte} L 0 ${Y_chem + Y_porte} Z`} fill="#e2e8f0" stroke="#94a3b8" strokeDasharray="4,4" />
+
+                {/* Faîtière */}
+                <g onMouseEnter={() => setActiveElement('faitiere')} onMouseLeave={() => setActiveElement(null)}>
+                    <line x1="0" y1={Y_faitiere} x2={L_X} y2={Y_faitiere} stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" />
+                </g>
+
+                {/* --- STRUCTURE BOIS --- */}
+                
+                <rect x="-10" y={Y_poutreArriere} width={L_X+20} height={p_w} fill="#c2410c" stroke="#7c2d12" strokeWidth="1.5" className="transition-all duration-500" />
+                <text x={L_X/2} y={Y_poutreArriere + 7} textAnchor="middle" fill="#fff" fontSize="8" fontWeight="bold">CLOISON & POUTRE CONFONDUES</text>
+
+                <rect x="0" y={Y_poutreAvant} width={L_X} height={p_w} fill="#c2410c" stroke="#7c2d12" strokeWidth="1.5" className="transition-all duration-500" />
+                <rect x="0" y={Y_chem} width={Y_chem} height={s_w} fill="#b45309" stroke="#7c2d12" strokeWidth="1" />
+
+                {/* Chevêtres encadrant la trémie */}
+                <rect x={tremieX_start} y={stairW} width={tremieHoleL} height={s_w} fill="#9a3412" stroke="#7c2d12" strokeWidth="1.5" className="transition-all duration-500" />
+                <rect x={tremieX_end} y={0} width={s_w} height={stairW} fill="#b45309" stroke="#7c2d12" strokeWidth="1.5" className="transition-all duration-500" />
+                {palierW > 0 && (
+                    <rect x={tremieX_start - s_w} y={0} width={s_w} height={stairW} fill="#9a3412" stroke="#7c2d12" strokeWidth="1.5" className="transition-all duration-500" />
+                )}
+
+                {/* ESCALIER */}
+                <g 
+                    onMouseEnter={() => setActiveElement('escalier')} 
+                    onMouseLeave={() => setActiveElement(null)}
+                    opacity={activeElement === 'escalier' || activeElement === 'diff' ? 1 : 0.4}
+                    className="transition-all duration-500 cursor-pointer"
+                >
+                    <rect x={stairX_start} y="0" width={stairL} height={stairW} fill="#fef3c7" stroke="#d97706" className="transition-all duration-500" />
+                    
+                    {stairType === 'classique' && (
+                    <g>
+                        <rect x={stairX_start} y="0" width={stairW} height={stairW} fill="#fcd34d" stroke="#d97706" strokeWidth="2" />
+                        <path d={`M ${stairX_start+stairW} 0 L ${stairX_start+stairW} ${stairW} L ${stairX_start} ${stairW} Z`} fill="#f59e0b" stroke="#d97706" />
+                        {Array.from({length: 10}).map((_, i) => (
+                        <line key={`d-${i}`} x1={stairX_start + stairW + ((stairL-stairW)/10)*i} y1="0" x2={stairX_start + stairW + ((stairL-stairW)/10)*i} y2={stairW} stroke="#d97706" />
+                        ))}
+                        <path d={`M ${stairX_end - 20} 35 L ${stairX_start + 35} 35 L ${stairX_start + 35} 60`} fill="none" stroke="#1e293b" strokeWidth="2" />
+                        <polygon points={`${stairX_start+30},55 ${stairX_start+35},65 ${stairX_start+40},55`} fill="#1e293b" />
+                    </g>
+                    )}
+
+                    {stairType === 'japonais' && (
+                    <g>
+                        <rect x={stairX_start} y="0" width={stairW} height={stairW} fill="#fcd34d" stroke="#b45309" strokeWidth="2" />
+                        <path d={`M ${stairX_start+stairW} 0 L ${stairX_start+stairW} ${stairW} L ${stairX_start} ${stairW} Z`} fill="#f59e0b" stroke="#b45309" />
+                        {Array.from({length: 10}).map((_, i) => {
+                        const stepRun = (stairL - stairW) / 10;
+                        return (
+                            <rect 
+                            key={`pj-${i}`} x={stairX_start + stairW + stepRun*i} y={i % 2 === 0 ? 0 : stairW/2} 
+                            width={stepRun} height={stairW/2} fill="#fcd34d" stroke="#b45309" strokeWidth="0.5" 
+                            />
+                        );
+                        })}
+                        <path d={`M ${stairX_end - 15} ${stairW/2} L ${stairX_start + 30} ${stairW/2} L ${stairX_start + 30} ${stairW + 15}`} fill="none" stroke="#1e293b" strokeWidth="2" />
+                        <polygon points={`${stairX_start+25},${stairW+10} ${stairX_start+30},${stairW+20} ${stairX_start+35},${stairW+10}`} fill="#1e293b" />
+                    </g>
+                    )}
+
+                    {stairType === 'bateau' && (
+                    <g>
+                        <rect x={stairX_start} y="0" width={stairW} height={stairW} fill="#fcd34d" stroke="#b45309" strokeWidth="2" />
+                        <text x={stairX_start + stairW/2} y={stairW/2 + 4} textAnchor="middle" fill="#92400e" fontSize="10" fontWeight="bold">PALIER</text>
+                        {Array.from({length: 10}).map((_, i) => {
+                        const stepRun = (stairL - stairW) / 10;
+                        return (
+                            <rect 
+                            key={`bat-${i}`} x={stairX_start + stairW + stepRun*i} y="0" width={stepRun} height={stairW} fill="#fcd34d" stroke="#b45309" strokeWidth="0.5" 
+                            />
+                        );
+                        })}
+                        <rect x={stairX_start + stairW} y="0" width="8" height={stairW} fill="#94a3b8" />
+                        <path d={`M ${stairX_end - 15} ${stairW/2} L ${stairX_start + 26} ${stairW/2} L ${stairX_start + 26} ${stairW + 15}`} fill="none" stroke="#1e293b" strokeWidth="2" />
+                        <polygon points={`${stairX_start+21},${stairW+10} ${stairX_start+26},${stairW+20} ${stairX_start+31},${stairW+10}`} fill="#1e293b" />
+                    </g>
+                    )}
+                </g>
+
+                <g opacity={activeElement === 'diff' ? 1 : 0} className="transition-opacity">
+                    <rect x={tremieX_end} y="-5" width={stairX_end - tremieX_end} height={stairW + 10} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="4,4" className="transition-all duration-500" />
+                </g>
+
+                {/* Solivettes */}
+                <g opacity={activeElement === 'lit' ? 0.3 : 1} className="transition-opacity">
+                    {[15, 45].map(x => (
+                        <rect key={`sg-${x}`} x={x} y={Y_chem + s_w} width={s_w} height={Y_poutreAvant - (Y_chem + s_w)} fill="#d97706" stroke="#92400e" strokeWidth="1" className="transition-all duration-500" />
+                    ))}
+                    {Array.from({length: 12}).map((_, i) => {
+                        const x = stairX_start + 15 + i*40;
+                        if (x >= tremieX_start && x < tremieX_end) {
+                            return <rect key={`sc-${x}`} x={x} y={stairW + s_w} width={s_w} height={Y_poutreAvant - (stairW + s_w)} fill="#d97706" stroke="#92400e" strokeWidth="1" className="transition-all duration-500" />;
+                        } else if (x >= stairX_start && x < tremieX_start) {
+                            return <rect key={`spal-${x}`} x={x} y={0} width={s_w} height={Y_poutreAvant} fill="#d97706" stroke="#92400e" strokeWidth="1" className="transition-all duration-500" />;
+                        }
+                        return null;
+                    })}
+                </g>
+                <g opacity={activeElement === 'lit' ? 1 : 0.3} className="transition-opacity">
+                    {Array.from({length: 10}).map((_, i) => {
+                        const x = tremieX_end + 15 + i*40;
+                        if(x < L_X - s_w) return <rect key={`sl-${x}`} x={x} y={0} width={s_w} height={Y_poutreAvant} fill="#d97706" stroke="#92400e" strokeWidth="1" className="transition-all duration-500" />;
+                        return null;
+                    })}
+                </g>
+
+                {/* Zone Vide (La Trémie) */}
+                <g onMouseEnter={() => setActiveElement('tremie')} onMouseLeave={() => setActiveElement(null)}>
+                    <rect x={tremieX_start} y={0} width={tremieHoleL} height={stairW} fill="none" stroke={activeElement === 'tremie' ? '#dc2626' : '#ef4444'} strokeWidth={activeElement === 'tremie' ? "3" : "2"} strokeDasharray="4,4" className="transition-all duration-500 cursor-pointer" />
+                    <text x={tremieX_start + tremieHoleL/2} y={stairW/2 + 5} textAnchor="middle" fill="#ef4444" fontSize="12" fontWeight="bold">TRÉMIE</text>
+                </g>
+
+                {/* --- LE LIT --- */}
+                <g 
+                    onMouseEnter={() => setActiveElement('lit')} 
+                    onMouseLeave={() => setActiveElement(null)}
+                    opacity={activeElement === 'lit' ? 1 : 0.6}
+                    className="transition-opacity duration-300 cursor-pointer"
+                >
+                    <rect x={bedX} y={bedY} width={bedW} height={bedH} rx="4" fill={isBedOverlapping ? "#fef2f2" : "#f8fafc"} stroke={isBedOverlapping ? "#ef4444" : "#cbd5e1"} strokeWidth="2" className="transition-all duration-500" />
+                    <rect 
+                        x={isBedHorizontal ? bedX : bedX} 
+                        y={isBedHorizontal ? bedY : bedY + 50} 
+                        width={isBedHorizontal ? bedW - 50 : bedW} 
+                        height={isBedHorizontal ? bedH : bedH - 50} 
+                        rx="4" fill={isBedOverlapping ? "#fecaca" : "#bfdbfe"} stroke={isBedOverlapping ? "#f87171" : "#93c5fd"} strokeWidth="2" className="transition-all duration-500" 
+                    />
+                    <rect 
+                        x={isBedHorizontal ? bedX + bedW - 35 : bedX + 30} 
+                        y={isBedHorizontal ? bedY + 30 : bedY + 15} 
+                        width={isBedHorizontal ? 20 : 40} 
+                        height={isBedHorizontal ? 40 : 20} 
+                        rx="4" fill="#fff" stroke="#cbd5e1" strokeWidth="1" className="transition-all duration-500" 
+                    />
+                    <rect 
+                        x={isBedHorizontal ? bedX + bedW - 35 : bedX + 90} 
+                        y={isBedHorizontal ? bedY + 90 : bedY + 15} 
+                        width={isBedHorizontal ? 20 : 40} 
+                        height={isBedHorizontal ? 40 : 20} 
+                        rx="4" fill="#fff" stroke="#cbd5e1" strokeWidth="1" className="transition-all duration-500" 
+                    />
+                    <text 
+                        x={bedX + bedW/2} y={bedY + bedH/2} textAnchor="middle" 
+                        fill={isBedOverlapping ? "#ef4444" : "#1e3a8a"} fontSize="12" fontWeight="bold" 
+                        className="transition-all duration-500"
+                        transform={isBedHorizontal ? `rotate(-90, ${bedX + bedW/2}, ${bedY + bedH/2})` : ""}
+                    >
+                        LIT 160x200
+                    </text>
+                    {isBedOverlapping && (
+                        <text 
+                            x={bedX + bedW/2} y={bedY + bedH/2 + 20} textAnchor="middle" 
+                            fill="#ef4444" fontSize="10" fontWeight="bold" className="animate-pulse transition-all duration-500"
+                            transform={isBedHorizontal ? `rotate(-90, ${bedX + bedW/2}, ${bedY + bedH/2})` : ""}
+                        >
+                            ⚠️ DANGER TRÉMIE
+                        </text>
+                    )}
+                </g>
+
+                {/* Cotes Horizontales */}
+                <line x1="0" y1="-25" x2={Y_chem} y2="-25" stroke="#0ea5e9" strokeWidth="1.5" />
+                <line x1={Y_chem} y1="-30" x2={Y_chem} y2="-20" stroke="#0ea5e9" strokeWidth="1.5" />
+                <text x={Y_chem/2} y="-15" textAnchor="middle" fill="#0ea5e9" fontSize="10" fontWeight="bold">58</text>
+
+                {palierW > 0 && (
+                    <g className="transition-all duration-500">
+                        <line x1={Y_chem} y1="-25" x2={tremieX_start} y2="-25" stroke="#f59e0b" strokeWidth="1.5" />
+                        <line x1={tremieX_start} y1="-30" x2={tremieX_start} y2="-20" stroke="#f59e0b" strokeWidth="1.5" />
+                    </g>
+                )}
+
+                <line x1={tremieX_start} y1="-25" x2={tremieX_end} y2="-25" stroke="#ef4444" strokeWidth="1.5" className="transition-all duration-500" />
+                <line x1={tremieX_end} y1="-30" x2={tremieX_end} y2="-20" stroke="#ef4444" strokeWidth="1.5" className="transition-all duration-500" />
+                <text x={tremieX_start + tremieHoleL/2} y="-15" textAnchor="middle" fill="#ef4444" fontSize="10" fontWeight="bold" className="transition-all duration-500">{tremieHoleL} (Trémie)</text>
+
+                <line x1={tremieX_end} y1="-25" x2={L_X} y2="-25" stroke="#10b981" strokeWidth="1.5" className="transition-all duration-500" />
+                <text x={tremieX_end + (L_X - tremieX_end)/2} y="-15" textAnchor="middle" fill="#10b981" fontSize="10" fontWeight="bold" className="transition-all duration-500">{L_X - tremieX_end} cm (Libre)</text>
+                
+                {/* Ligne limite Pièce (Coupée) */}
+                <line x1={L_X + 25} y1="0" x2={L_X + 25} y2={cutY} stroke="#475569" strokeWidth="1" strokeDasharray="4,2" />
+                <line x1={L_X + 20} y1="0" x2={L_X + 30} y2="0" stroke="#475569" strokeWidth="1" />
+                <text x={L_X + 35} y={cutY/2} textAnchor="middle" fill="#475569" fontSize="10" transform={`rotate(90, ${L_X + 35}, ${cutY/2})`}>Pièce totale : 428 cm</text>
+                </svg>
+                );
+            };
+
+            // ==========================================
+            // RENDU 2 : VUE EN COUPE (ÉLÉVATION MUR FOND)
+            // ==========================================
+            const renderCoupeView = () => {
+                const svgW = 600;
+                const svgH = 350;
+                const padX = 40;
+                const padZ = 40;
+                
+                const scaleX = (svgW - padX * 2) / L_X;
+                const scaleZ = (svgH - padZ * 2) / 300;
+
+                const trX = (x) => padX + x * scaleX;
+                const trZ = (z) => svgH - padZ - z * scaleZ;
+
+                const zAtTremieEdge = Math.min((stairL - tremieL) / flightRun, 1) * flightH;
+
+                return (
+                <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-full drop-shadow-sm">
+                    
+                    {/* Grille */}
+                    {[0, 100, 200, 235, 248, 265, 300].map(z => (
+                        <g key={`gz-${z}`}>
+                            <line x1={trX(0)} y1={trZ(z)} x2={trX(L_X)} y2={trZ(z)} stroke="#e2e8f0" strokeDasharray="2,2" />
+                            <text x={trX(0)-5} y={trZ(z)+4} textAnchor="end" fill={(z===235||z===248||z===265) ? "#b45309" : "#94a3b8"} fontSize={(z===235||z===248||z===265) ? "11" : "9"} fontWeight={(z===235||z===248||z===265) ? "bold" : "normal"}>{z}</text>
+                        </g>
+                    ))}
+
+                    <line x1={trX(0)} y1={trZ(300)} x2={trX(L_X)} y2={trZ(300)} stroke="#3b82f6" strokeWidth="2" strokeDasharray="4,4" />
+                    <text x={trX(L_X/2)} y={trZ(300)-10} textAnchor="middle" fill="#3b82f6" fontSize="12" fontWeight="bold">Ligne de Toiture (Plafond fuyant vers le haut)</text>
+
+                    {/* Poutre Principale Arrière */}
+                    <g onMouseEnter={() => setActiveElement('caisson')} onMouseLeave={() => setActiveElement(null)} className="transition-opacity cursor-pointer">
+                        <rect x={trX(0)} y={trZ(Z_top_poutre)} width={trX(L_X)-trX(0)} height={trZ(Z_bottom)-trZ(Z_top_poutre)} fill="#c2410c" opacity="0.4" />
+                    </g>
+
+                    <rect x={trX(0)} y={trZ(300)} width={trX(58)-trX(0)} height={trZ(0)-trZ(300)} fill="#94a3b8" stroke="#64748b" />
+                    <text x={trX(29)} y={trZ(150)} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="bold" transform={`rotate(-90, ${trX(29)}, ${trZ(150)})`}>CHEMINÉE</text>
+
+                    {/* FENÊTRE SAUVÉE */}
+                    <g onMouseEnter={() => setActiveElement('caisson')} onMouseLeave={() => setActiveElement(null)}>
+                        <line x1={trX(L_X)} y1={trZ(85)} x2={trX(L_X)} y2={trZ(235)} stroke={activeElement === 'caisson' ? "#3b82f6" : "#60a5fa"} strokeWidth="8" strokeLinecap="square" className="transition-all duration-300" />
+                        <text x={trX(L_X) - 15} y={trZ(160)} textAnchor="middle" fill="#3b82f6" fontSize="10" fontWeight="bold" transform={`rotate(-90, ${trX(L_X) - 15}, ${trZ(160)})`}>FENÊTRE (H:235)</text>
+                    </g>
+
+                    {/* Escalier */}
+                    <g opacity={activeElement === 'escalier' || !activeElement ? 1 : 0.3} className="transition-opacity cursor-pointer">
+                        {stairType === 'classique' ? (
+                            <g className="transition-all duration-500">
+                                <line x1={trX(stairX_end)} y1={trZ(0)} x2={trX(stairX_start + stairW)} y2={trZ(H_plancher * 9/12)} stroke="#fcd34d" strokeWidth="8" />
+                                {Array.from({length: 9}).map((_, i) => {
+                                    const px1 = stairX_end - ((stairL - stairW)/9)*i;
+                                    const px2 = stairX_end - ((stairL - stairW)/9)*(i+1);
+                                    const pz1 = (H_plancher * 9/12 / 9)*i;
+                                    const pz2 = (H_plancher * 9/12 / 9)*(i+1);
+                                    return (
+                                        <g key={`step-c-${i}`}>
+                                            <line x1={trX(px1)} y1={trZ(pz1)} x2={trX(px2)} y2={trZ(pz1)} stroke="#d97706" strokeWidth="2" />
+                                            <line x1={trX(px2)} y1={trZ(pz1)} x2={trX(px2)} y2={trZ(pz2)} stroke="#d97706" strokeWidth="2" />
+                                        </g>
+                                    );
+                                })}
+                                <rect x={trX(stairX_start)} y={trZ(H_plancher)} width={trX(stairX_start + stairW) - trX(stairX_start)} height={trZ(H_plancher * 9/12) - trZ(H_plancher)} fill="#fcd34d" stroke="#d97706" strokeWidth="2" />
+                                <text x={trX(stairX_start + stairW/2)} y={trZ(H_plancher * 10.5/12)} textAnchor="middle" fill="#92400e" fontSize="10" fontWeight="bold">1/4 Tournant</text>
+                            </g>
+                        ) : stairType === 'japonais' ? (
+                            <g className="transition-all duration-500">
+                                <line x1={trX(stairX_end)} y1={trZ(0)} x2={trX(stairX_start + stairW)} y2={trZ(H_plancher * 9/12)} stroke="#fcd34d" strokeWidth="8" />
+                                {Array.from({length: 9}).map((_, i) => {
+                                    const px1 = stairX_end - ((stairL - stairW)/9)*i;
+                                    const px2 = stairX_end - ((stairL - stairW)/9)*(i+1);
+                                    const pz1 = (H_plancher * 9/12 / 9)*i;
+                                    const pz2 = (H_plancher * 9/12 / 9)*(i+1);
+                                    return (
+                                        <g key={`step-j-${i}`}>
+                                            <line x1={trX(px1)} y1={trZ(pz1)} x2={trX(px2)} y2={trZ(pz1)} stroke="#b45309" strokeWidth="2" />
+                                            <line x1={trX(px2)} y1={trZ(pz1)} x2={trX(px2)} y2={trZ(pz2)} stroke="#b45309" strokeWidth="2" />
+                                        </g>
+                                    );
+                                })}
+                                <rect x={trX(stairX_start)} y={trZ(H_plancher)} width={trX(stairX_start + stairW) - trX(stairX_start)} height={trZ(H_plancher * 9/12) - trZ(H_plancher)} fill="#fcd34d" stroke="#b45309" strokeWidth="2" />
+                            </g>
+                        ) : (
+                            <g className="transition-all duration-500">
+                                <line x1={trX(stairX_end)} y1={trZ(0)} x2={trX(stairX_start + stairW)} y2={trZ(H_plancher)} stroke="#fcd34d" strokeWidth="8" />
+                                {Array.from({length: 12}).map((_, i) => {
+                                    const px1 = stairX_end - ((stairL - stairW)/12)*i;
+                                    const px2 = stairX_end - ((stairL - stairW)/12)*(i+1);
+                                    const pz1 = (H_plancher/12)*i;
+                                    const pz2 = (H_plancher/12)*(i+1);
+                                    return (
+                                        <g key={`step-o-${i}`}>
+                                            <line x1={trX(px1)} y1={trZ(pz1)} x2={trX(px2)} y2={trZ(pz1)} stroke="#b45309" strokeWidth="2" />
+                                            <line x1={trX(px2)} y1={trZ(pz1)} x2={trX(px2)} y2={trZ(pz2)} stroke="#b45309" strokeWidth="2" />
+                                        </g>
+                                    );
+                                })}
+                                <rect x={trX(stairX_start)} y={trZ(H_plancher)} width={trX(stairX_start + stairW) - trX(stairX_start)} height={trZ(235) - trZ(H_plancher)} fill="#fcd34d" stroke="#b45309" strokeWidth="2" />
+                            </g>
+                        )}
+                    </g>
+
+                    {/* PLANCHER EN CAISSON */}
+                    <g onMouseEnter={() => setActiveElement('caisson')} onMouseLeave={() => setActiveElement(null)} className="transition-opacity cursor-pointer">
+                        <rect x={trX(tremieX_end)} y={trZ(H_plancher)} width={trX(L_X)-trX(tremieX_end)} height={trZ(Z_bottom)-trZ(H_plancher)} fill="#f59e0b" stroke="#b45309" strokeWidth="2" />
+                        
+                        {palierW > 0 && stairType === 'bateau' && (
+                            <rect x={trX(stairX_start)} y={trZ(H_plancher)} width={trX(tremieX_start)-trX(stairX_start)} height={trZ(Z_bottom)-trZ(H_plancher)} fill="#fcd34d" stroke="#b45309" strokeWidth="2" />
+                        )}
+
+                        <text x={trX(tremieX_end + (L_X-tremieX_end)/2)} y={trZ(240)} textAnchor="middle" fill="#92400e" fontSize="12" fontWeight="bold">OSB + SOLIVES</text>
+                        <text x={trX(L_X) - 40} y={trZ(255)} fill="#c2410c" fontSize="10" fontWeight="bold">Rebord 17cm</text>
+                    </g>
+
+                    {/* Zone Trémie */}
+                    <rect x={trX(tremieX_start)} y={trZ(Z_top_poutre)} width={trX(tremieX_end)-trX(tremieX_start)} height={trZ(Z_bottom)-trZ(Z_top_poutre)} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="4,4" className="transition-all duration-500" />
+
+                    {/* L'Échappée */}
+                    <g 
+                    onMouseEnter={() => setActiveElement('echappee')} 
+                    onMouseLeave={() => setActiveElement(null)} 
+                    opacity={activeElement === 'echappee' || !activeElement ? 1 : 0.3}
+                    className="transition-opacity cursor-pointer"
+                    >
+                        <line x1={trX(tremieX_end)} y1={trZ(Z_bottom)} x2={trX(tremieX_end)} y2={trZ(zAtTremieEdge)} stroke="#f43f5e" strokeWidth="4" className="transition-all duration-500" />
+                        <line x1={trX(tremieX_end)-10} y1={trZ(Z_bottom)} x2={trX(tremieX_end)+10} y2={trZ(Z_bottom)} stroke="#f43f5e" strokeWidth="3" className="transition-all duration-500" />
+                        <line x1={trX(tremieX_end)-10} y1={trZ(zAtTremieEdge)} x2={trX(tremieX_end)+10} y2={trZ(zAtTremieEdge)} stroke="#f43f5e" strokeWidth="3" className="transition-all duration-500" />
+                        <circle cx={trX(tremieX_end)} cy={trZ(zAtTremieEdge + (Z_bottom-zAtTremieEdge)/2)} r="14" fill="#f43f5e" className="animate-pulse transition-all duration-500"/>
+                        <text x={trX(tremieX_end) + 20} y={trZ(zAtTremieEdge + (Z_bottom-zAtTremieEdge)/2) + 4} fill="#e11d48" fontSize="14" fontWeight="bold" className="transition-all duration-500">Échappée: {echappee} cm</text>
+                    </g>
+
+                    {/* Cotes Horizontales */}
+                    <line x1={trX(0)} y1={trZ(-30)} x2={trX(L_X)} y2={trZ(-30)} stroke="#475569" strokeWidth="1" />
+                    <line x1={trX(58)} y1={trZ(-25)} x2={trX(58)} y2={trZ(-35)} stroke="#475569" strokeWidth="1" />
+                    {palierW > 0 && <line x1={trX(tremieX_start)} y1={trZ(-25)} x2={trX(tremieX_start)} y2={trZ(-35)} stroke="#475569" strokeWidth="1" className="transition-all duration-500" />}
+                    <line x1={trX(tremieX_end)} y1={trZ(-25)} x2={trX(tremieX_end)} y2={trZ(-35)} stroke="#475569" strokeWidth="1" className="transition-all duration-500" />
+                    
+                    <text x={trX(29)} y={trZ(-40)} textAnchor="middle" fill="#475569" fontSize="10">58</text>
+                    <text x={trX(tremieX_start + tremieHoleL/2)} y={trZ(-40)} textAnchor="middle" fill="#ef4444" fontSize="12" fontWeight="bold" className="transition-all duration-500">{tremieHoleL} (Trémie)</text>
+                    <text x={trX(tremieX_end + (L_X-tremieX_end)/2)} y={trZ(-40)} textAnchor="middle" fill="#10b981" fontSize="12" fontWeight="bold" className="transition-all duration-500">{L_X - tremieX_end} (Libre)</text>
+                </svg>
+                );
+            };
+
+            return (
+                <div className="w-full flex flex-col items-center">
+                <div className="max-w-[1500px] w-full bg-white sm:rounded-2xl shadow-xl border border-slate-200 overflow-clip">
+                    
+                    {/* Header Fixed (Sticky Toolbar) */}
+                    <div className="sticky top-0 z-50 bg-slate-900 border-b-4 border-emerald-500 shadow-md">
+                        <div className="flex flex-col lg:flex-row items-center justify-between p-3 lg:px-6 gap-4">
+                            
+                                                  
+                            {/* Filtres alignés */}
+                            <div className="flex flex-row flex-wrap justify-center lg:justify-end gap-3 xl:gap-6 w-full">
+                                
+                                {/* 1. Profondeur */}
+                                <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1.5 border border-purple-500/50 shadow-inner">
+                                    <div className="px-1 sm:px-2 min-w-[75px] text-purple-400 flex flex-col items-center justify-center text-[10px] font-bold uppercase tracking-wider leading-none">
+                                        <i className="fa-solid fa-ruler-horizontal text-sm sm:text-base mb-1.5"></i>
+                                        <span>Profondeur</span>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        {[160, 180, 200].map(depth => (
+                                            <button 
+                                                key={`depth-${depth}`} 
+                                                onClick={() => setMezzDepth(depth)} 
+                                                className={`px-3 py-2 rounded-md font-bold text-xs sm:text-sm transition-all ${mezzDepth === depth ? 'bg-purple-500 text-white shadow-sm' : 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white'}`}
+                                            >
+                                                {depth} cm
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 2. Vue */}
+                                <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1.5 border border-sky-500/50 shadow-inner">
+                                    <div className="px-1 sm:px-2 min-w-[75px] text-sky-400 flex flex-col items-center justify-center text-[10px] font-bold uppercase tracking-wider leading-none">
+                                        <i className="fa-solid fa-eye text-sm sm:text-base mb-1.5"></i>
+                                        <span>Vue</span>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <button 
+                                            onClick={() => setViewMode('top')} 
+                                            className={`px-3 py-2 rounded-md font-bold text-xs sm:text-sm transition-all ${viewMode === 'top' ? 'bg-sky-500 text-white shadow-sm' : 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white'}`}
+                                        >
+                                            Dessus
+                                        </button>
+                                        <button 
+                                            onClick={() => setViewMode('coupe')} 
+                                            className={`px-3 py-2 rounded-md font-bold text-xs sm:text-sm transition-all ${viewMode === 'coupe' ? 'bg-sky-500 text-white shadow-sm' : 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white'}`}
+                                        >
+                                            Coupe
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* 3. Escalier */}
+                                <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1.5 border border-emerald-500/50 shadow-inner">
+                                    <div className="px-1 sm:px-2 min-w-[75px] text-emerald-400 flex flex-col items-center justify-center text-[10px] font-bold uppercase tracking-wider leading-none">
+                                        <i className="fa-solid fa-stairs text-sm sm:text-base mb-1.5"></i>
+                                        <span>Echelle</span>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <button 
+                                            onClick={() => setStairType('classique')} 
+                                            className={`px-2 sm:px-3 py-1.5 rounded-md font-bold text-[10px] sm:text-xs leading-tight transition-all flex flex-col items-center justify-center ${stairType === 'classique' ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white'}`}
+                                        >
+                                            <span>Meunier 1/4</span>
+                                            <span className="font-normal opacity-80 mt-0.5">(65 cm)</span>
+                                        </button>
+                                        <button 
+                                            onClick={() => setStairType('japonais')} 
+                                            className={`px-2 sm:px-3 py-1.5 rounded-md font-bold text-[10px] sm:text-xs leading-tight transition-all flex flex-col items-center justify-center ${stairType === 'japonais' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white'}`}
+                                        >
+                                            <span>Japonais</span>
+                                            <span className="font-normal opacity-80 mt-0.5">(60 cm)</span>
+                                        </button>
+                                        <button 
+                                            onClick={() => setStairType('bateau')} 
+                                            className={`px-2 sm:px-3 py-1.5 rounded-md font-bold text-[10px] sm:text-xs leading-tight transition-all flex flex-col items-center justify-center ${stairType === 'bateau' ? 'bg-blue-500 text-white shadow-sm' : 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white'}`}
+                                        >
+                                            <span>Bateau</span>
+                                            <span className="font-normal opacity-80 mt-0.5">(52 cm)</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {/* 4. NOUVEAU: Échappée avec Curseur */}
+                                <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1.5 border border-rose-500/50 shadow-inner flex-1 min-w-[220px] max-w-[320px]">
+                                    <div className="px-1 sm:px-2 min-w-[75px] text-rose-400 flex flex-col items-center justify-center text-[10px] font-bold uppercase tracking-wider leading-none">
+                                        <i className="fa-solid fa-arrows-up-down text-sm sm:text-base mb-1.5"></i>
+                                        <span>Échappée</span>
+                                    </div>
+                                    <div className="flex-1 flex items-center gap-3 px-3">
+                                        <input 
+                                            type="range" 
+                                            min="150" 
+                                            max="210" 
+                                            step="1" 
+                                            value={echappee} 
+                                            onChange={(e) => setEchappee(Number(e.target.value))}
+                                            className="w-full accent-rose-500 cursor-pointer h-2 bg-slate-600 rounded-lg appearance-none"
+                                        />
+                                        <span className="text-rose-100 font-bold text-sm min-w-[50px] text-right whitespace-nowrap">{echappee} cm</span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 md:p-8 flex flex-col lg:flex-row gap-6 lg:gap-8">
+                    
+                    <div className="flex-1 flex flex-col items-center w-full">
+                        <div className="relative w-full max-w-[1000px] aspect-[4/3] lg:aspect-auto lg:h-[70vh] bg-slate-50 rounded-xl p-2 md:p-4 border border-slate-200 shadow-inner transition-all duration-500 flex items-center justify-center">
+                        {viewMode === 'top' ? renderTopView() : renderCoupeView()}
+                        </div>
+                    </div>
+
+                    <div className="w-full lg:w-[380px] flex flex-col gap-3 lg:overflow-y-auto lg:max-h-[70vh] lg:pr-2">
+                        
+                        <div 
+                            className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${activeElement === 'dimensions' ? 'border-purple-500 bg-purple-50 scale-[1.02]' : 'border-slate-200 bg-white'}`}
+                            onMouseEnter={() => setActiveElement('dimensions')} onMouseLeave={() => setActiveElement(null)}
+                        >
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-6 h-6 bg-[#a855f7] rounded flex justify-center items-center"><span className="text-white text-xs font-bold"><i className="fa-solid fa-ruler-combined"></i></span></div>
+                                <h3 className="font-bold text-slate-800">Dimensions Générales</h3>
+                            </div>
+                            <div className="text-sm text-slate-600 grid grid-cols-2 gap-x-2 gap-y-1 mt-2">
+                                <div><strong>Pièce :</strong> 415x428 cm</div>
+                                <div><strong>Mezzanine :</strong> 415x{mezzDepth} cm</div>
+                                <div><strong>Faîtière :</strong> 4m43</div>
+                                <div><strong>H. Plancher :</strong> 2m48</div>
+                            </div>
+                        </div>
+
+                       
+
+                        {viewMode === 'top' && (
+                            <div 
+                                className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${activeElement === 'filet' ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-slate-200 bg-white'}`}
+                                onMouseEnter={() => setActiveElement('filet')} onMouseLeave={() => setActiveElement(null)}
+                            >
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="w-6 h-6 bg-[#3b82f6] rounded flex justify-center items-center"><span className="text-white text-xs font-bold"><i className="fa-solid fa-network-wired"></i></span></div>
+                                    <h3 className="font-bold text-slate-800">Le Filet d'Habitation</h3>
+                                </div>
+                                <p className="text-sm text-slate-600">
+                                    Tendu entre la poutre avant (à {mezzDepth} cm) et la jonction du toit (à ~{Math.round(yCollisionToit)} cm), il sécurise le vide sur séjour sans bloquer la lumière de la fenêtre. Plus la mezzanine est courte, plus le filet est grand !
+                                </p>
+                            </div>
+                        )}
+
+                        {viewMode === 'top' && (
+                            <div 
+                                className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${activeElement === 'collision' ? 'border-red-500 bg-red-50 scale-[1.02]' : 'border-slate-200 bg-white'}`}
+                                onMouseEnter={() => setActiveElement('collision')} onMouseLeave={() => setActiveElement(null)}
+                            >
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="w-6 h-6 bg-[#ef4444] rounded flex justify-center items-center"><span className="text-white text-xs font-bold"><i className="fa-solid fa-exclamation-triangle"></i></span></div>
+                                    <h3 className="font-bold text-slate-800">Limite Maximale (Toit)</h3>
+                                </div>
+                                <p className="text-sm text-slate-600">
+                                    La ligne rouge pointillée (à ~{Math.round(yCollisionToit)} cm) indique l'endroit exact où le plancher (à 2m48 de hauteur) vient s'encastrer dans la pente du toit. Au-delà, c'est le vide impossible.
+                                </p>
+                            </div>
+                        )}
+
+                        {viewMode === 'coupe' && (
+                        <div 
+                            className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${activeElement === 'echappee' ? 'border-rose-500 bg-rose-50 scale-[1.02]' : 'border-slate-200 bg-white'}`}
+                            onMouseEnter={() => setActiveElement('echappee')} onMouseLeave={() => setActiveElement(null)}
+                        >
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-6 h-6 bg-[#f43f5e] rounded flex justify-center items-center"><span className="text-white text-xs font-bold"><i className="fa-solid fa-arrows-up-down"></i></span></div>
+                                <h3 className="font-bold text-slate-800">L'Échappée ({echappee} cm)</h3>
+                            </div>
+                            <p className="text-sm text-slate-600">
+                                La ligne rose montre les {echappee} cm stricts de sécurité choisis entre les marches et le dessous de l'ossature bois. Plus vous acceptez de réduire cette valeur (ex: 180cm au lieu de 200cm), plus vite le plancher peut être refermé au-dessus de l'escalier !
+                            </p>
+                        </div>
+                        )}
+
+                        <div 
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${activeElement === 'tremie' ? 'border-red-500 bg-red-50 scale-[1.02]' : 'border-slate-200 bg-white'}`}
+                        onMouseEnter={() => setActiveElement('tremie')} onMouseLeave={() => setActiveElement(null)}
+                        >
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-6 h-6 border-2 border-dashed border-[#ef4444] rounded flex justify-center items-center"><span className="text-[#ef4444] font-bold text-xs">■</span></div>
+                            <h3 className="font-bold text-slate-800">La Trémie Réelle : {tremieHoleL} cm</h3>
+                        </div>
+                        <p className="text-sm text-slate-600">
+                            {stairType === 'bateau' 
+                            ? `Le palier de ${stairW}cm fait partie du plancher ! Le trou RÉEL dans l'ossature ne fait donc plus que ${tremieHoleL} cm de long.`
+                            : (stairType === 'japonais' 
+                            ? `L'escalier japonais ayant des marches creuses en haut, la trémie englobe toute la zone de virage. Le trou fait la totalité de la Trémie (${tremieHoleL} cm).` 
+                            : `Dans l'échelle classique, le trou dans le plancher englobe toute la zone de virage et fait la taille complète de la Trémie (${tremieHoleL} cm).`)}
+                        </p>
+                        </div>
+
+                        <div 
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${activeElement === 'diff' ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-slate-200 bg-white'}`}
+                        onMouseEnter={() => setActiveElement('diff')} onMouseLeave={() => setActiveElement(null)}
+                        >
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-6 h-6 bg-[#3b82f6] rounded flex justify-center items-center"><span className="text-white text-xs font-bold"><i className="fa-solid fa-arrows-left-right"></i></span></div>
+                            <h3 className="font-bold text-slate-800">Recul au sol : {stairL} cm</h3>
+                        </div>
+                        <p className="text-sm text-slate-600">
+                            {stairType === 'bateau' 
+                            ? `Recul Total = Palier (${stairW}cm) + Échelle DZ (${stairL-stairW}cm) = ${stairL} cm.`
+                            : (stairType === 'japonais' 
+                            ? `1/4 Tournant à marches. Recul Total affiché est de ${stairL} cm.` 
+                            : `L'échelle classique a des marches balancées. Le recul total est de ${stairL} cm.`)}
+                        </p>
+                        </div>
+
+                        <div 
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${activeElement === 'lit' || activeElement === 'solivettes_longues' ? 'border-amber-500 bg-amber-50 scale-[1.02]' : 'border-slate-200 bg-white'}`}
+                        onMouseEnter={() => setActiveElement('lit')} onMouseLeave={() => setActiveElement(null)}
+                        >
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className={`w-6 h-6 rounded flex justify-center items-center ${mezzDepth < 200 && (L_X - (mezzDepth < 200 ? 200 : 160) - 10) < tremieX_end ? 'bg-red-500' : 'bg-[#f59e0b]'}`}><span className="text-white text-xs font-bold">{mezzDepth < 200 && (L_X - (mezzDepth < 200 ? 200 : 160) - 10) < tremieX_end ? '⚠️' : <i className="fa-solid fa-bed"></i>}</span></div>
+                            <h3 className={`font-bold ${mezzDepth < 200 && (L_X - (mezzDepth < 200 ? 200 : 160) - 10) < tremieX_end ? 'text-red-600' : 'text-slate-800'}`}>Le Plancher libre ({L_X - tremieX_end} cm)</h3>
+                        </div>
+                        <p className={`text-sm ${mezzDepth < 200 && (L_X - (mezzDepth < 200 ? 200 : 160) - 10) < tremieX_end ? 'text-red-700 font-bold' : 'text-slate-600'}`}>
+                            {mezzDepth < 200 ? 
+                                ((L_X - 200 - 10) < tremieX_end ? 
+                                    "DANGER : À " + mezzDepth + " cm, le lit a tourné. Mais la trémie (" + tremieL + "cm) est trop longue, le lit tombe dans le vide !" 
+                                    : "À " + mezzDepth + " cm, le lit a tourné. Grâce à la trémie ultra-courte, il s'encastre en toute sécurité à droite.") 
+                                : 
+                                "C'est la magie de l'échappée ! En réduisant la hauteur de passage autorisée, la trémie se referme plus vite et vous offre plus de plancher plein pour circuler autour du lit."}
+                        </p>
+                        </div>
+
+                    </div>
+                    </div>
+                </div>
+                </div>
+            );
+            }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
