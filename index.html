@@ -115,19 +115,6 @@
                     <text x={L_X - 15} y="75" textAnchor="middle" fill="#2563eb" fontSize="10" fontWeight="bold" transform={`rotate(-90, ${L_X - 15}, 75)`}>FENÊTRE</text>
                 </g>
 
-                {/* FILET */}
-                <g onMouseEnter={() => setActiveElement('filet')} onMouseLeave={() => setActiveElement(null)} className="cursor-pointer transition-opacity duration-300">
-                    <rect x="0" y={mezzDepth} width={L_X} height={yCollisionToit - mezzDepth} fill="url(#netPattern)" opacity={activeElement === 'filet' ? 1 : 0.7} />
-                    <rect x="0" y={mezzDepth} width={L_X} height={yCollisionToit - mezzDepth} fill="none" stroke="#64748b" strokeWidth="3" strokeDasharray="6,6" />
-                    <text x={L_X/2} y={mezzDepth + (yCollisionToit - mezzDepth)/2} textAnchor="middle" fill="#334155" fontSize="12" fontWeight="bold" opacity="0.9">FILET D'HABITATION</text>
-                </g>
-
-                {/* Ligne de Collision Toit */}
-                <g onMouseEnter={() => setActiveElement('collision')} onMouseLeave={() => setActiveElement(null)}>
-                    <line x1="0" y1={yCollisionToit} x2={L_X} y2={yCollisionToit} stroke={activeElement === 'collision' ? '#dc2626' : '#ef4444'} strokeWidth={activeElement === 'collision' ? "3" : "2"} strokeDasharray="8,4" className="transition-all duration-300" />
-                    <text x={L_X/2} y={yCollisionToit + 12} textAnchor="middle" fill={activeElement === 'collision' ? '#dc2626' : '#ef4444'} fontSize="10" fontWeight="bold" className="transition-all duration-300">JONCTION MUR/TOIT (~{Math.round(yCollisionToit)} cm)</text>
-                </g>
-
                 {/* Cheminée */}
                 <rect x="0" y="0" width={Y_chem} height={Y_chem} fill="#94a3b8" stroke="#64748b" />
                 <text x={Y_chem/2} y={Y_chem/2+4} textAnchor="middle" fill="#fff" fontSize="10" fontWeight="bold">CH.</text>
@@ -136,9 +123,6 @@
                 <rect x="-6" y={Y_chem} width="6" height={Y_porte} fill="#cbd5e1" />
                 <path d={`M 0 ${Y_chem} A ${Y_porte} ${Y_porte} 0 0 0 -${Y_porte} ${Y_chem + Y_porte} L 0 ${Y_chem + Y_porte} Z`} fill="#e2e8f0" stroke="#94a3b8" strokeDasharray="4,4" />
 
-                {/* Faîtière */}
-                <line x1="0" y1={Y_faitiere} x2={L_X} y2={Y_faitiere} stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" />
-
                 {/* Structure Bois Principale (CAISSON) */}
                 <g onMouseEnter={() => setActiveElement('caisson')} onMouseLeave={() => setActiveElement(null)} className="transition-opacity duration-300 cursor-pointer" opacity={activeElement === 'caisson' ? 1 : 0.9}>
                     <rect x="-10" y={Y_poutreArriere} width={L_X+20} height={p_w} fill="#c2410c" stroke="#7c2d12" strokeWidth="1.5" />
@@ -146,10 +130,11 @@
                     <rect x="0" y={Y_poutreAvant} width={L_X} height={p_w} fill="#c2410c" stroke="#7c2d12" strokeWidth="1.5" />
                 </g>
 
-                {/* Trémie Dessus (Vide) */}
-                <g onMouseEnter={() => setActiveElement('tremie')} onMouseLeave={() => setActiveElement(null)} className="transition-all duration-300 cursor-pointer">
-                    <rect x={tremieX_start} y={0} width={tremieHoleL} height={stairW} fill="none" stroke={activeElement === 'tremie' ? '#dc2626' : '#ef4444'} strokeWidth={activeElement === 'tremie' ? "3" : "2"} strokeDasharray="4,4" />
-                    <text x={tremieX_start + tremieHoleL/2} y={stairW/2 + 5} textAnchor="middle" fill="#ef4444" fontSize="12" fontWeight="bold">TRÉMIE</text>
+                {/* FILET (En dessous des calques supérieurs) */}
+                <g onMouseEnter={() => setActiveElement('filet')} onMouseLeave={() => setActiveElement(null)} className="cursor-pointer transition-opacity duration-300">
+                    <rect x="0" y={mezzDepth} width={L_X} height={yCollisionToit - mezzDepth} fill="url(#netPattern)" opacity={activeElement === 'filet' ? 1 : 0.7} />
+                    <rect x="0" y={mezzDepth} width={L_X} height={yCollisionToit - mezzDepth} fill="none" stroke="#64748b" strokeWidth="3" strokeDasharray="6,6" />
+                    <text x={L_X/2} y={mezzDepth + (yCollisionToit - mezzDepth)/2} textAnchor="middle" fill="#334155" fontSize="12" fontWeight="bold" opacity="0.9">FILET D'HABITATION</text>
                 </g>
 
                 {/* ESCALIER VISUEL */}
@@ -195,11 +180,6 @@
                     )}
                 </g>
 
-                {/* Différence Recul / Trémie */}
-                <g opacity={activeElement === 'diff' ? 1 : 0} className="transition-opacity">
-                    <rect x={tremieX_end} y="-5" width={stairX_end - tremieX_end} height={stairW + 10} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="4,4" className="transition-all duration-500" />
-                </g>
-
                 {/* Solivettes */}
                 <g opacity={activeElement === 'lit' ? 0.3 : 1} className="transition-opacity">
                     {Array.from({length: 12}).map((_, i) => {
@@ -218,6 +198,34 @@
                     <rect x={isBedHorizontal ? bedX + bedW - 35 : bedX + 90} y={isBedHorizontal ? bedY + 90 : bedY + 15} width={isBedHorizontal ? 20 : 40} height={isBedHorizontal ? 40 : 20} rx="4" fill="#fff" stroke="#cbd5e1" strokeWidth="1" />
                     <text x={bedX + bedW/2} y={bedY + bedH/2} textAnchor="middle" fill={isBedOverlapping ? "#ef4444" : "#1e3a8a"} fontSize="12" fontWeight="bold" transform={isBedHorizontal ? `rotate(-90, ${bedX + bedW/2}, ${bedY + bedH/2})` : ""}>LIT 160x200</text>
                     {isBedOverlapping && <text x={bedX + bedW/2} y={bedY + bedH/2 + 20} textAnchor="middle" fill="#ef4444" fontSize="10" fontWeight="bold" transform={isBedHorizontal ? `rotate(-90, ${bedX + bedW/2}, ${bedY + bedH/2})` : ""}>⚠️ DANGER</text>}
+                </g>
+
+                {/* ======================================================== */}
+                {/* === CALQUES SUPÉRIEURS (Lignes, Textes, Pointillés) === */}
+                {/* ======================================================== */}
+
+                {/* Faîtière (Au dessus de la structure) */}
+                <g onMouseEnter={() => setActiveElement('faitiere')} onMouseLeave={() => setActiveElement(null)} className="cursor-pointer transition-all duration-300">
+                    <line x1="0" y1={Y_faitiere} x2={L_X} y2={Y_faitiere} stroke={activeElement === 'faitiere' ? '#2563eb' : '#3b82f6'} strokeWidth="2" strokeDasharray="5,5" />
+                    <text x={L_X/2} y={Y_faitiere-5} textAnchor="middle" fill={activeElement === 'faitiere' ? '#2563eb' : '#3b82f6'} fontSize="10" fontWeight="bold">Axe Faîtière (H: 4m43)</text>
+                </g>
+
+                {/* Ligne de Collision Toit */}
+                <g onMouseEnter={() => setActiveElement('collision')} onMouseLeave={() => setActiveElement(null)} className="cursor-pointer transition-all duration-300">
+                    <line x1="0" y1={yCollisionToit} x2={L_X} y2={yCollisionToit} stroke={activeElement === 'collision' ? '#dc2626' : '#ef4444'} strokeWidth={activeElement === 'collision' ? "3" : "2"} strokeDasharray="8,4" />
+                    <text x={L_X/2} y={yCollisionToit + 12} textAnchor="middle" fill={activeElement === 'collision' ? '#dc2626' : '#ef4444'} fontSize="10" fontWeight="bold">JONCTION MUR/TOIT (~{Math.round(yCollisionToit)} cm)</text>
+                </g>
+
+                {/* Zone Vide (La Trémie) */}
+                <g onMouseEnter={() => setActiveElement('tremie')} onMouseLeave={() => setActiveElement(null)} className="cursor-pointer transition-all duration-500">
+                    <rect x={tremieX_start} y={0} width={tremieHoleL} height={stairW} fill="none" stroke={activeElement === 'tremie' ? '#dc2626' : '#ef4444'} strokeWidth={activeElement === 'tremie' ? "3" : "2"} strokeDasharray="4,4" />
+                    <text x={tremieX_start + tremieHoleL/2} y={stairW/2 + 5} textAnchor="middle" fill={activeElement === 'tremie' ? '#dc2626' : '#ef4444'} fontSize="12" fontWeight="bold">TRÉMIE</text>
+                </g>
+
+                {/* Différence Recul / Trémie (Débord de la marche) */}
+                <g opacity={activeElement === 'diff' ? 1 : 0} className="transition-opacity pointer-events-none">
+                    <rect x={tremieX_end} y="-5" width={stairX_end - tremieX_end} height={stairW + 10} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="4,4" className="transition-all duration-500" />
+                    <text x={tremieX_end + (stairX_end - tremieX_end)/2} y={stairW + 15} textAnchor="middle" fill="#3b82f6" fontSize="10" fontWeight="bold">Débord {Math.round(stairX_end - tremieX_end)}cm</text>
                 </g>
 
                 {/* COTES HORIZONTALES (EN HAUT DU PLAN) */}
