@@ -33,7 +33,7 @@
             // --- Dimensions de la pièce ---
             const L_X = 415; 
             const L_Y = 428; 
-            const Y_chem = 40; 
+            const Y_chem = 37; 
             const Y_porte = 70; 
             const Y_faitiere = 73; 
 
@@ -93,7 +93,7 @@
                 const cutY = yCollisionToit + 30;
 
                 return (
-                <svg viewBox={`-40 -60 500 ${cutY + 50}`} className="w-full h-full drop-shadow-sm">
+                <svg viewBox={`-37 -60 500 ${cutY + 50}`} className="w-full h-full drop-shadow-sm">
                 <defs>
                     <pattern id="netPattern" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                         <line x1="0" y1="0" x2="0" y2="12" stroke="#64748b" strokeWidth="0.8" opacity="0.6" />
@@ -141,7 +141,7 @@
                         <rect key={`sg-${x}`} x={x} y={Y_chem + s_w} width={s_w} height={Y_poutreAvant - (Y_chem + s_w)} fill="#d97706" stroke="#92400e" strokeWidth="1" className="transition-all duration-500" />
                     ))}
                     {Array.from({length: 12}).map((_, i) => {
-                        const x = stairX_start + 15 + i*40;
+                        const x = stairX_start + 15 + i*37;
                         if (x >= tremieX_start && x < tremieX_end) return <rect key={`sc-${x}`} x={x} y={stairW + s_w} width={s_w} height={Y_poutreAvant - (stairW + s_w)} fill="#d97706" stroke="#92400e" strokeWidth="1" className="transition-all duration-500" />;
                         else if (x >= 0 && x < L_X - s_w) return <rect key={`sp-${x}`} x={x} y={0} width={s_w} height={Y_poutreAvant} fill="#d97706" stroke="#92400e" strokeWidth="1" className="transition-all duration-500" />;
                         return null;
@@ -237,7 +237,7 @@
                 {/* COTES HORIZONTALES (EN HAUT DU PLAN) */}
                 <line x1="0" y1="-25" x2={Y_chem} y2="-25" stroke="#0ea5e9" strokeWidth="1.5" />
                 <line x1={Y_chem} y1="-30" x2={Y_chem} y2="-20" stroke="#0ea5e9" strokeWidth="1.5" />
-                <text x={Y_chem/2} y="-15" textAnchor="middle" fill="#0ea5e9" fontSize="10" fontWeight="bold">40</text>
+                <text x={Y_chem/2} y="-15" textAnchor="middle" fill="#0ea5e9" fontSize="10" fontWeight="bold">37</text>
 
                 {palierW > 0 && (
                     <g className="transition-all duration-500">
@@ -266,7 +266,7 @@
             // RENDU 2 : VUE EN COUPE (ÉLÉVATION)
             // ==========================================
             const renderCoupeView = () => {
-                const svgW = 600; const svgH = 350; const padX = 40; const padZ = 40;
+                const svgW = 600; const svgH = 350; const padX = 37; const padZ = 37;
                 const scaleX = (svgW - padX * 2) / L_X; const scaleZ = (svgH - padZ * 2) / 300;
                 const trX = (x) => padX + x * scaleX; const trZ = (z) => svgH - padZ - z * scaleZ;
                 const zAtTremieEdge = Math.min((stairL - tremieL) / flightRun, 1) * flightH;
@@ -286,13 +286,13 @@
                         <rect x={trX(0)} y={trZ(Z_top_poutre)} width={trX(L_X)-trX(0)} height={trZ(Z_bottom)-trZ(Z_top_poutre)} fill="#c2410c" opacity={activeElement === 'caisson' ? "0.6" : "0.4"} className="transition-all duration-300"/>
                     </g>
                     
-                    <rect x={trX(0)} y={trZ(300)} width={trX(40)-trX(0)} height={trZ(0)-trZ(300)} fill="#94a3b8" stroke="#64748b" />
+                    <rect x={trX(0)} y={trZ(300)} width={trX(37)-trX(0)} height={trZ(0)-trZ(300)} fill="#94a3b8" stroke="#64748b" />
                     
                     {/* Fenêtre */}
                     <line x1={trX(L_X)} y1={trZ(85)} x2={trX(L_X)} y2={trZ(235)} stroke="#60a5fa" strokeWidth="8" strokeLinecap="square" />
                     
                     {/* Plancher Caisson */}
-                    <rect x={trX(0)} y={trZ(H_plancher)} width={trX(40)-trX(0)} height={trZ(Z_bottom)-trZ(H_plancher)} fill="#f59e0b" stroke="#b45309" strokeWidth="2" className="transition-all duration-500" />
+                    <rect x={trX(0)} y={trZ(H_plancher)} width={trX(37)-trX(0)} height={trZ(Z_bottom)-trZ(H_plancher)} fill="#f59e0b" stroke="#b45309" strokeWidth="2" className="transition-all duration-500" />
                     <rect x={trX(tremieX_end)} y={trZ(H_plancher)} width={trX(L_X)-trX(tremieX_end)} height={trZ(Z_bottom)-trZ(H_plancher)} fill="#f59e0b" stroke="#b45309" strokeWidth="2" className="transition-all duration-500" />
                     {palierW > 0 && <rect x={trX(stairX_start)} y={trZ(H_plancher)} width={trX(tremieX_start)-trX(stairX_start)} height={trZ(Z_bottom)-trZ(H_plancher)} fill="#fcd34d" stroke="#b45309" strokeWidth="2" className="transition-all duration-500" />}
                     
@@ -379,14 +379,14 @@
 
                     {/* COTES HORIZONTALES (EN BAS DE LA COUPE) */}
                     <line x1={trX(0)} y1={trZ(-30)} x2={trX(L_X)} y2={trZ(-30)} stroke="#475569" strokeWidth="1" />
-                    <line x1={trX(40)} y1={trZ(-25)} x2={trX(40)} y2={trZ(-35)} stroke="#475569" strokeWidth="1" />
+                    <line x1={trX(37)} y1={trZ(-25)} x2={trX(37)} y2={trZ(-35)} stroke="#475569" strokeWidth="1" />
                     {palierW > 0 && <line x1={trX(tremieX_start)} y1={trZ(-25)} x2={trX(tremieX_start)} y2={trZ(-35)} stroke="#475569" strokeWidth="1" className="transition-all duration-500" />}
                     <line x1={trX(tremieX_end)} y1={trZ(-25)} x2={trX(tremieX_end)} y2={trZ(-35)} stroke="#475569" strokeWidth="1" className="transition-all duration-500" />
                     
-                    <text x={trX(29)} y={trZ(-40)} textAnchor="middle" fill="#475569" fontSize="10">40</text>
-                    {palierW > 0 && <text x={trX(stairX_start + palierW/2)} y={trZ(-40)} textAnchor="middle" fill="#d97706" fontSize="10" fontWeight="bold" className="transition-all duration-500">Palier {palierW}</text>}
-                    <text x={trX(tremieX_start + tremieHoleL/2)} y={trZ(-40)} textAnchor="middle" fill="#ef4444" fontSize="12" fontWeight="bold" className="transition-all duration-500">{tremieHoleL} (Trémie)</text>
-                    <text x={trX(tremieX_end + (L_X-tremieX_end)/2)} y={trZ(-40)} textAnchor="middle" fill="#10b981" fontSize="12" fontWeight="bold" className="transition-all duration-500">{L_X - tremieX_end} (Libre)</text>
+                    <text x={trX(29)} y={trZ(-37)} textAnchor="middle" fill="#475569" fontSize="10">37</text>
+                    {palierW > 0 && <text x={trX(stairX_start + palierW/2)} y={trZ(-37)} textAnchor="middle" fill="#d97706" fontSize="10" fontWeight="bold" className="transition-all duration-500">Palier {palierW}</text>}
+                    <text x={trX(tremieX_start + tremieHoleL/2)} y={trZ(-37)} textAnchor="middle" fill="#ef4444" fontSize="12" fontWeight="bold" className="transition-all duration-500">{tremieHoleL} (Trémie)</text>
+                    <text x={trX(tremieX_end + (L_X-tremieX_end)/2)} y={trZ(-37)} textAnchor="middle" fill="#10b981" fontSize="12" fontWeight="bold" className="transition-all duration-500">{L_X - tremieX_end} (Libre)</text>
 
                 </svg>
                 );
