@@ -28,7 +28,7 @@
             const [stairType, setStairType] = useState('rabattable'); // 'classique', 'japonais', 'bateau', 'rabattable'
             const [viewMode, setViewMode] = useState('top'); // 'top' ou 'coupe'
             const [mezzDepth, setMezzDepth] = useState(200); // Profondeur (160, 180, 200)
-            const [echappee, setEchappee] = useState(200); // Echappée variable (180 à 210)
+            const [echappee, setEchappee] = useState(200); // Echappée variable (150 à 210)
 
             // --- Dimensions de la pièce ---
             const L_X = 415; 
@@ -454,7 +454,7 @@
                                     <span className="text-[11px] font-black uppercase tracking-widest mt-1">Échappée</span>
                                 </div>
                                 <div className="flex-1 flex items-center gap-4 px-2">
-                                    <input type="range" min="180" max="210" step="1" value={echappee} onChange={(e) => setEchappee(Number(e.target.value))} className="w-full accent-rose-500 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+                                    <input type="range" min="150" max="210" step="1" value={echappee} onChange={(e) => setEchappee(Number(e.target.value))} className="w-full accent-rose-500 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
                                     <span className="text-rose-100 font-bold text-base sm:text-lg min-w-[45px] text-right">{echappee} cm</span>
                                 </div>
                             </div>
@@ -519,7 +519,7 @@
                                 <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${activeElement === 'echappee' ? 'border-rose-500 bg-rose-50' : 'border-slate-200 bg-white'}`} onMouseEnter={() => setActiveElement('echappee')} onMouseLeave={() => setActiveElement(null)}>
                                     <div className="flex items-center gap-3 mb-2"><i className="fa-solid fa-arrows-up-down text-rose-500 text-lg"></i><h3 className="font-black text-sm uppercase text-slate-800">L'Échappée ({echappee} cm)</h3></div>
                                     <p className="text-[11px] text-slate-600 leading-relaxed">
-                                        C'est la distance de confort pour passer la tête ! Plus vous l'augmentez avec le curseur (ex: 210cm), plus il faut ouvrir le plafond. En la réduisant à 180cm ou 190cm, la trémie se referme beaucoup plus tôt, vous offrant plus de plancher.
+                                        C'est la distance de confort pour passer la tête ! Plus vous l'augmentez avec le curseur (ex: 210cm), plus il faut ouvrir le plafond. En la réduisant à 150cm ou 190cm, la trémie se referme beaucoup plus tôt, vous offrant plus de plancher.
                                     </p>
                                 </div>
                             )}
